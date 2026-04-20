@@ -3,6 +3,7 @@ import { onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signOut 
 import { doc, getDoc, setDoc, onSnapshot, collection, query, where, orderBy, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { UserProfile, Goal, Saving, Spending } from '../types';
+import { useTranslation } from './LanguageProvider';
 
 export enum OperationType {
   CREATE = 'create',
@@ -39,6 +40,7 @@ interface FirebaseContextType {
   goals: Goal[];
   savings: Saving[];
   spending: Spending[];
+  authLoading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
@@ -47,6 +49,7 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,9 +57,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [savings, setSavings] = useState<Saving[]>([]);
   const [spending, setSpending] = useState<Spending[]>([]);
 
+  const [authLoading, setAuthLoading] = useState(false);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      setAuthLoading(false);
       if (u) {
         // Test connection
         try {
@@ -120,8 +126,36 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user]);
 
   const login = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    if (authLoading) return;
+    
+    setAuthLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      setAuthLoading(false);
+      console.error("Login error:", error);
+      
+      // auth/cancelled-popup-request happens if another popup is opened or the operation is superseded
+      // We can ignore this silently to prevent annoying alerts on double-clicks
+      if (error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
+
+      let message = t('errorOccurred'); // Fallback to translated error if possible
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        message = "This domain is not authorized. Please add it to 'Authorized domains' in Firebase Console.";
+      } else if (error.code === 'auth/popup-blocked') {
+        message = "Popup blocked! Please allow popups for this site.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = "Google Sign-In is not enabled in Firebase Console.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        return; // User closed the window, no need for alert
+      }
+      
+      alert(message);
+    }
   };
 
   const logout = async () => {
@@ -160,7 +194,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <FirebaseContext.Provider value={{ user, profile, loading, goals, savings, spending, login, logout, updateProfile }}>
+    <FirebaseContext.Provider value={{ user, profile, loading, goals, savings, spending, authLoading, login, logout, updateProfile }}>
       {children}
     </FirebaseContext.Provider>
   );

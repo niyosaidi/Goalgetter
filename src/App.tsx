@@ -14,7 +14,7 @@ import Quiz from './components/Quiz';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const AppContent = () => {
-  const { user, loading, login, logout, profile } = useFirebase();
+  const { user, loading, login, logout, profile, authLoading } = useFirebase();
   const { language, setLanguage, t } = useTranslation();
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -47,8 +47,20 @@ const AppContent = () => {
           <p className="text-lg text-stone-600">
             {t('tagline')}
           </p>
-          <Button onClick={login} className="w-full bg-stone-900 py-6 text-lg hover:bg-stone-800">
-            <LogIn className="mr-2" /> {t('startJourney')}
+          <Button 
+            onClick={login} 
+            disabled={authLoading}
+            className="w-full bg-stone-900 py-6 text-lg hover:bg-stone-800 disabled:opacity-70"
+          >
+            {authLoading ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="h-5 w-5 border-2 border-white border-t-transparent rounded-full"
+              />
+            ) : (
+              <><LogIn className="mr-2" /> {t('startJourney')}</>
+            )}
           </Button>
           <div className="flex justify-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setLanguage('en')} className={language === 'en' ? 'bg-stone-100' : ''}>EN</Button>
