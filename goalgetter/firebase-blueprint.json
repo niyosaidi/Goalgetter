@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and financial settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "monthlyBudget": { "type": "number" },
+        "currency": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A financial goal derived from a dream",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "dream": { "type": "string" },
+        "concreteGoal": { "type": "string" },
+        "category": { "type": "string", "enum": ["short-term", "medium-term", "long-term"] },
+        "cost": { "type": "number" },
+        "priority": { "type": "integer" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dream", "concreteGoal", "cost", "priority", "deadline"]
+    },
+    "Saving": {
+      "title": "Saving",
+      "description": "A savings log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "goalId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "date"]
+    },
+    "Spending": {
+      "title": "Spending",
+      "description": "A spending log entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "isNeed": { "type": "boolean" },
+        "date": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" }
+      },
+      "required": ["userId", "amount", "isNeed", "date"]
+    },
+    "QuizResult": {
+      "title": "QuizResult",
+      "description": "Results of a financial education quiz",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "score": { "type": "integer" },
+        "date": { "type": "string", "format": "date-time" },
+        "answers": { "type": "object" }
+      },
+      "required": ["userId", "score", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "Financial goals"
+    },
+    "/savings/{savingId}": {
+      "schema": "Saving",
+      "description": "Savings logs"
+    },
+    "/spending/{spendingId}": {
+      "schema": "Spending",
+      "description": "Spending logs"
+    },
+    "/quizResults/{resultId}": {
+      "schema": "QuizResult",
+      "description": "Quiz performance tracking"
+    }
+  }
+}
