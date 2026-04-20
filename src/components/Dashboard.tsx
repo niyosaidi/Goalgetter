@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFirebase } from './FirebaseProvider';
 import { useTranslation } from './LanguageProvider';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Target, PiggyBank, TrendingUp, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Target, PiggyBank, TrendingUp, AlertCircle, Sparkles, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getFinancialAdvice } from '../services/geminiService';
 
 const Dashboard = () => {
   const { profile, goals, savings, spending } = useFirebase();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const [advice, setAdvice] = useState<string | null>(null);
+  const [loadingAdvice, setLoadingAdvice] = useState(false);
 
   const totalSavings = savings.reduce((acc, s) => acc + s.amount, 0);
   const totalSpending = spending.reduce((acc, s) => acc + s.amount, 0);
@@ -23,6 +26,22 @@ const Dashboard = () => {
   const nextGoal = activeGoals[0];
   const nextGoalSavings = nextGoal ? savings.filter(s => s.goalId === nextGoal.id).reduce((acc, s) => acc + s.amount, 0) : 0;
   const nextGoalProgress = nextGoal ? (nextGoalSavings / nextGoal.cost) * 100 : 0;
+
+  const fetchAdvice = async () => {
+    setLoadingAdvice(true);
+    try {
+      const result = await getFinancialAdvice(profile, goals, savings, spending, language);
+      setAdvice(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingAdvice(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdvice();
+  }, [profile, language]); // Fetch on mount or when language changes
 
   return (
     <div className="space-y-6">
@@ -95,18 +114,71 @@ const Dashboard = () => {
 
       {/* Insights */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-stone-900">{t('insights')}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-stone-900">{t('insights')}</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={fetchAdvice} 
+            disabled={loadingAdvice}
+            className="text-stone-400 hover:text-stone-600"
+          >
+            <RefreshCw size={14} className={loadingAdvice ? "animate-spin" : ""} />
+          </Button>
+        </div>
+        
         <div className="space-y-3">
+          {/* AI Assistant Card */}
+          <Card className="border-none bg-indigo-50 shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-1">
+              <Sparkles className="text-indigo-200" size={40} />
+            </div>
+            <CardContent className="p-4 relative z-10">
+              <div className="mb-2 flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                <Sparkles size={14} />
+                <span>{t('smartAssistant')}</span>
+              </div>
+              <AnimatePresence mode="wait">
+                {loadingAdvice ? (
+                  <motion.div 
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex h-12 items-center gap-2"
+                  >
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          animate={{ scale: [1, 1.5, 1] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
+                          className="h-1.5 w-1.5 rounded-full bg-indigo-300"
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-indigo-400 font-medium italic">{t('thinking')}</span>
+                  </motion.div>
+                ) : (
+                  <motion.p 
+                    key="advice"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm leading-relaxed text-indigo-900 font-medium"
+                  >
+                    {advice}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+
           {totalSpending > (profile?.monthlyBudget || 0) && profile?.monthlyBudget !== 0 && (
-            <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-red-700">
+            <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-red-700 border border-red-100">
               <AlertCircle size={20} className="shrink-0" />
               <p className="text-sm">{t('budgetExceeded')}</p>
             </div>
           )}
-          <div className="flex items-start gap-3 rounded-xl bg-stone-100 p-4 text-stone-700">
-            <TrendingUp size={20} className="shrink-0" />
-            <p className="text-sm">{t('savingTip')}</p>
-          </div>
         </div>
       </div>
     </div>
